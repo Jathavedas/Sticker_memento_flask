@@ -14,6 +14,14 @@ def index():
     # Serves the frontend interface
     return render_template('index.html')
 
+@app.route('/health')
+def health_check():
+    """
+    A lightweight endpoint for Uptime Robot to ping.
+    Returns a 200 OK status to prove the server is running.
+    """
+    return jsonify({"status": "healthy", "message": "Application is up and running"}), 200
+
 @app.route('/generate', methods=['POST'])
 def generate():
     try:
