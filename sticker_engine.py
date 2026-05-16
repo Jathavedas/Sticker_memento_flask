@@ -233,6 +233,6 @@ def generate_pdf_job(
         pages.append(page)
 
     pdf_path = os.path.join(tmpdir, "memento_world_sticker.pdf")
-    pages[0].save(pdf_path, save_all=True, append_images=pages[1:], resolution=dpi)
+    pages[0].save(pdf_path, format="PDF", save_all=True, append_images=pages[1:], resolution=dpi)
 
     return pdf_path
