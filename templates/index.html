@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memento World - Sticker Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ea580c; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c2410c; }
+    </style>
+</head>
+<body class="min-h-screen text-zinc-900 font-sans selection:bg-orange-200">
+
+    <div id="threejs-bg" class="fixed inset-0 -z-10 bg-zinc-950"></div>
+
+    <div class="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md shadow-lg">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-4">
+                <img src="/static/logo.jpg" alt="Logo" class="h-12 w-12 rounded-full border-2 border-orange-600 object-cover shadow-[0_0_15px_rgba(234,88,12,0.5)]">
+                <div>
+                    <div class="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">MEMENTO WORLD</div>
+                    <div class="text-xs font-medium text-zinc-400 tracking-widest">STIKER ENGINE <span class="text-orange-500">v2.O</span></div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('fileInput').click()" class="rounded-xl bg-gradient-to-r from-orange-600 to-red-600 px-5 py-2 text-sm font-bold text-white shadow-md hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105">
+                    Upload Images
+                </button>
+                <button onclick="clearAll()" class="rounded-xl border border-zinc-700 bg-zinc-800/80 px-5 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors backdrop-blur-md">
+                    Clear All
+                </button>
+            </div>
+            <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="onPickFiles(event)">
+        </div>
+    </div>
+
+    <div class="mx-auto max-w-7xl px-4 py-6">
+        
+        <div class="grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl border border-white/20 bg-white/90 backdrop-blur-md p-5 shadow-xl md:col-span-2">
+                <div class="flex justify-between items-end border-b border-zinc-200 pb-3">
+                    <div class="text-lg font-black text-zinc-800">Print Job Settings</div>
+                    <div class="rounded-full bg-orange-100 px-3 py-1 text-sm font-bold text-orange-700" id="summary-text">0 Images &bull; 0 Qty</div>
+                </div>
+
+                <div class="mt-4 grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-zinc-500 uppercase">Paper Size</label>
+                        <select id="paper" class="mt-1 w-full rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" onchange="toggleCustomPaper()">
+                            <option value="12x18">12 &times; 18 inch</option>
+                            <option value="a4">A4</option>
+                            <option value="a3">A3</option>
+                            <option value="custom">Custom Dimensions</option>
+                        </select>
+                    </div>
+                    <div id="custom-paper-inputs" class="hidden gap-2">
+                        <div class="w-full">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">Width (cm)</label>
+                            <input id="customW" type="number" class="mt-1 w-full rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" value="21">
+                        </div>
+                        <div class="w-full">
+                            <label class="text-xs font-bold text-zinc-500 uppercase">Height (cm)</label>
+                            <input id="customH" type="number" class="mt-1 w-full rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" value="29.7">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex items-center gap-3 rounded-xl bg-zinc-50/50 p-3 border border-zinc-200">
+                    <input type="checkbox" id="regMarks" class="h-5 w-5 rounded border-zinc-300 text-orange-600 focus:ring-orange-500 cursor-pointer" checked onchange="updateRegText()">
+                    <div>
+                        <label for="regMarks" class="text-sm font-bold text-zinc-800 select-none cursor-pointer">Registration Marks</label>
+                        <div id="reg-marks-text" class="text-xs font-medium text-zinc-500">Margin: 15mm Sides / 5mm Top-Bottom</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-white/20 bg-white/90 backdrop-blur-md p-5 shadow-xl">
+                <div class="text-lg font-black text-zinc-800 border-b border-zinc-200 pb-3">Sheet Filler</div>
+                <label class="mt-4 flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="fillEnabled" class="h-5 w-5 rounded border-zinc-300 text-orange-600 focus:ring-orange-500" onchange="toggleFillSource()"> 
+                    <span class="text-sm font-bold text-zinc-700">Auto-fill empty space</span>
+                </label>
+                <div id="fill-options" class="mt-4 hidden grid gap-3 p-3 bg-zinc-50/50 rounded-xl border border-zinc-200">
+                    <select id="fillSource" class="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm bg-white/80 focus:border-orange-500 focus:outline-none" onchange="toggleFillSelected()">
+                        <option value="last">Repeat Last Image</option>
+                        <option value="first">Repeat First Image</option>
+                        <option value="selected">Choose Specific Image</option>
+                    </select>
+                    <select id="fillSelected" class="hidden w-full rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none">
+                        <option value="">Select filler...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="hidden mt-4 rounded-xl border border-red-300 bg-red-50/90 backdrop-blur-sm p-4 text-sm font-bold text-red-700 shadow-sm flex items-center gap-2">
+            <span id="error-text"></span>
+        </div>
+
+        <div id="batch-toolbar" class="hidden mt-6 rounded-2xl border border-orange-300/50 bg-white/80 backdrop-blur-md p-4 shadow-xl transition-all">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-tr from-orange-400 to-red-500 text-white font-black text-sm shadow-md" id="batch-count-badge">0</div>
+                    <span class="font-bold text-zinc-800">Items Selected</span>
+                    <button onclick="deleteSelected()" class="text-sm text-red-600 hover:text-red-800 hover:underline font-bold ml-2">Delete Selected</button>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2 bg-white/50 p-2 rounded-xl border border-orange-200/50">
+                    <span class="text-xs font-bold text-zinc-600 uppercase px-2">Batch Edit</span>
+                    
+                    <input type="number" id="batchQty" placeholder="Qty" min="1" class="w-16 rounded-lg border border-zinc-300 bg-white/80 px-2 py-1.5 text-sm focus:outline-none focus:border-orange-500">
+                    
+                    <select id="batchShape" class="rounded-lg border border-zinc-300 bg-white/80 px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" onchange="updateBatchPresetDropdown()">
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Circle</option>
+                    </select>
+                    
+                    <select id="batchPreset" class="rounded-lg border border-zinc-300 bg-white/80 px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500" onchange="toggleBatchCustomInputs()"></select>
+
+                    <div id="batch-custom-inputs" class="hidden flex items-center gap-2"></div>
+
+                    <button onclick="applyBatchSettings()" class="rounded-lg bg-zinc-900 px-4 py-1.5 text-sm font-bold text-white hover:bg-zinc-800 transition-colors shadow-md">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 flex items-center justify-between px-2">
+            <label class="flex items-center gap-2 text-sm font-bold text-white cursor-pointer hover:text-orange-400 transition-colors drop-shadow-md">
+                <input type="checkbox" id="selectAllCheckbox" class="h-4 w-4 rounded border-zinc-300 text-orange-600 cursor-pointer" onchange="toggleSelectAll(this.checked)">
+                Select All
+            </label>
+        </div>
+
+        <div id="items-container" class="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-28"></div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 border-t border-white/20 bg-zinc-950/80 backdrop-blur-lg shadow-[0_-4px_15px_rgba(0,0,0,0.3)] z-40">
+        <div class="mx-auto flex max-w-7xl justify-between px-4 py-4 items-center">
+            <div class="flex flex-col">
+                <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Total Output</span>
+                <span id="total-stickers-footer" class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">0 Stickers</span>
+            </div>
+            <div class="flex gap-3">
+                <button id="previewBtn" onclick="generatePDF(true)" class="rounded-xl border border-orange-600/50 bg-white/5 backdrop-blur-sm px-6 py-3 text-sm font-black text-orange-400 shadow-sm hover:bg-white/10 hover:text-orange-300 disabled:opacity-50 transition-all" disabled>
+                    PREVIEW
+                </button>
+                <button id="generateBtn" onclick="generatePDF(false)" class="rounded-xl bg-gradient-to-r from-orange-600 to-red-600 px-8 py-3 text-sm font-black text-white shadow-lg hover:from-orange-500 hover:to-red-500 disabled:opacity-50 transition-all" disabled>
+                    DOWNLOAD PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewModal" class="fixed inset-0 z-50 hidden bg-zinc-900/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-white/20">
+            <div class="flex justify-between items-center p-4 border-b bg-zinc-50">
+                <h3 class="text-lg font-black text-zinc-800">Print Preview</h3>
+                <button onclick="closePreview()" class="text-zinc-500 hover:text-red-600 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex-grow bg-zinc-200">
+                <iframe id="pdfFrame" class="w-full h-full" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
+
+        const container = document.getElementById('threejs-bg');
+        
+        // Setup Scene
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x09090b, 0.015); // Dark zinc fog to blend edges
+
+        // Setup Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 20;
+
+        // Setup Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Create Glowing Embers/Particles
+        const particlesCount = 1000;
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            // Randomly scatter particles in a wide 3D space
+            posArray[i] = (Math.random() - 0.5) * 60;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.12,
+            color: 0xea580c, // Fiery orange matching the UI
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending // Makes overlapping particles glow
+        });
+
+        const particlesMesh = new THREE.Points(geometry, material);
+        scene.add(particlesMesh);
+
+        // Animation Loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+
+            // Slowly rotate the particle cloud
+            particlesMesh.rotation.y = elapsedTime * 0.03;
+            particlesMesh.rotation.x = elapsedTime * 0.01;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle Window Resize dynamically
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+
+    <script>
+        let items = [];
+
+        const RECT_PRESETS = [
+            { label: "1202 XS", value: "1202xs", widthCm: 4.5, heightCm: 3.5 },
+            { label: "1302 XS", value: "1302xs", widthCm: 4.5, heightCm: 2.5 },
+            { label: "Trophy Plate", value: "trophy6", widthCm: 6.0, heightCm: 2.5 },
+            { label: "Custom Size", value: "custom", widthCm: 4, heightCm: 6 },
+        ];
+
+        const CIRCLE_PRESETS = [
+            { label: "1202 XS", value: "1202_XS", diameterCm: 3.3 },
+            { label: "1302 XS", value: "1302_XS", diameterCm: 3.0 },
+            { label: "50mm Medal", value: "medal50", diameterCm: 5.0 },
+            { label: "38mm Medal", value: "medal38", diameterCm: 3.8 },
+            { label: "25mm Insert", value: "insert25", diameterCm: 2.5 },
+            { label: "Custom Size", value: "custom", diameterCm: 3.3 },
+        ];
+
+        function onPickFiles(e) {
+            const files = Array.from(e.target.files);
+            const existingNames = new Set(items.map(i => `${i.file.name}-${i.file.size}`));
+
+            files.forEach(f => {
+                if (!existingNames.has(`${f.name}-${f.size}`)) {
+                    items.push({
+                        id: Math.random().toString(36).slice(2),
+                        file: f,
+                        url: URL.createObjectURL(f),
+                        name: f.name,
+                        selected: false,
+                        shape: "rectangle",
+                        qty: 1,
+                        circlePreset: "1202_XS",
+                        diameterCm: 3.3,
+                        rectPreset: "1202xs",
+                        widthCm: 4.5,
+                        heightCm: 3.5
+                    });
+                }
+            });
+            e.target.value = ""; 
+            render();
+        }
+
+        function updateItem(index, key, value) {
+            items[index][key] = value;
+            if (key === 'rectPreset') {
+                const preset = RECT_PRESETS.find(p => p.value === value);
+                if (preset && preset.value !== 'custom') {
+                    items[index].widthCm = preset.widthCm;
+                    items[index].heightCm = preset.heightCm;
+                }
+            }
+            if (key === 'circlePreset') {
+                const preset = CIRCLE_PRESETS.find(p => p.value === value);
+                if (preset && preset.value !== 'custom') {
+                    items[index].diameterCm = preset.diameterCm;
+                }
+            }
+            render();
+        }
+
+        function toggleItemSelection(index) {
+            items[index].selected = !items[index].selected;
+            render();
+        }
+
+        function toggleSelectAll(isChecked) {
+            items.forEach(i => i.selected = isChecked);
+            render();
+        }
+
+        function deleteSelected() {
+            items = items.filter(i => !i.selected);
+            document.getElementById('selectAllCheckbox').checked = false;
+            render();
+        }
+
+        function updateBatchPresetDropdown() {
+            const shape = document.getElementById("batchShape").value;
+            const presetSelect = document.getElementById("batchPreset");
+            const options = shape === 'circle' ? CIRCLE_PRESETS : RECT_PRESETS;
+            
+            presetSelect.innerHTML = options.map(p => 
+                `<option value="${p.value}">${p.label} ${p.value !== 'custom' ? (shape === 'circle' ? '('+p.diameterCm+'cm)' : '('+p.widthCm+'x'+p.heightCm+')') : ''}</option>`
+            ).join('');
+            
+            toggleBatchCustomInputs();
+        }
+
+        function toggleBatchCustomInputs() {
+            const shape = document.getElementById("batchShape").value;
+            const preset = document.getElementById("batchPreset").value;
+            const customDiv = document.getElementById("batch-custom-inputs");
+            
+            if (preset === "custom") {
+                customDiv.classList.remove("hidden");
+                customDiv.classList.add("flex");
+                if (shape === "circle") {
+                    customDiv.innerHTML = `<input type="number" id="batchCustomDia" placeholder="Dia (cm)" class="w-24 rounded-lg border border-orange-300 bg-white/80 px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-orange-500" step="0.1">`;
+                } else {
+                    customDiv.innerHTML = `
+                        <input type="number" id="batchCustomW" placeholder="W (cm)" class="w-16 rounded-lg border border-orange-300 bg-white/80 px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-orange-500" step="0.1">
+                        <span class="text-zinc-600 font-bold">&times;</span>
+                        <input type="number" id="batchCustomH" placeholder="H (cm)" class="w-16 rounded-lg border border-orange-300 bg-white/80 px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-orange-500" step="0.1">
+                    `;
+                }
+            } else {
+                customDiv.classList.add("hidden");
+                customDiv.classList.remove("flex");
+            }
+        }
+
+        function applyBatchSettings() {
+            const shape = document.getElementById("batchShape").value;
+            const presetVal = document.getElementById("batchPreset").value;
+            const qtyVal = document.getElementById("batchQty").value;
+
+            items.forEach(item => {
+                if (item.selected) {
+                    item.shape = shape;
+                    if (qtyVal) item.qty = Number(qtyVal);
+
+                    if (shape === 'rectangle') {
+                        item.rectPreset = presetVal;
+                        if (presetVal === 'custom') {
+                            const bw = document.getElementById('batchCustomW')?.value;
+                            const bh = document.getElementById('batchCustomH')?.value;
+                            if (bw) item.widthCm = Number(bw);
+                            if (bh) item.heightCm = Number(bh);
+                        } else {
+                            const preset = RECT_PRESETS.find(p => p.value === presetVal);
+                            if (preset) {
+                                item.widthCm = preset.widthCm;
+                                item.heightCm = preset.heightCm;
+                            }
+                        }
+                    } else {
+                        item.circlePreset = presetVal;
+                        if (presetVal === 'custom') {
+                            const dia = document.getElementById('batchCustomDia')?.value;
+                            if (dia) item.diameterCm = Number(dia);
+                        } else {
+                            const preset = CIRCLE_PRESETS.find(p => p.value === presetVal);
+                            if (preset) {
+                                item.diameterCm = preset.diameterCm;
+                            }
+                        }
+                    }
+                }
+            });
+            document.getElementById("batchQty").value = ''; // Reset qty field
+            render();
+        }
+
+        function removeItem(index) {
+            items.splice(index, 1);
+            render();
+        }
+
+        function clearAll() {
+            items = [];
+            document.getElementById('selectAllCheckbox').checked = false;
+            render();
+        }
+
+        function toggleCustomPaper() {
+            const paper = document.getElementById("paper").value;
+            const inputs = document.getElementById("custom-paper-inputs");
+            if(paper === "custom") {
+                inputs.classList.remove("hidden");
+                inputs.classList.add("flex");
+            } else {
+                inputs.classList.add("hidden");
+                inputs.classList.remove("flex");
+            }
+        }
+
+        function updateRegText() {
+            const isChecked = document.getElementById("regMarks").checked;
+            document.getElementById("reg-marks-text").innerText = isChecked ? "Margin: 15mm Sides / 5mm Top-Bottom" : "Margin: 5mm All Sides";
+        }
+
+        function toggleFillSource() {
+            const isEnabled = document.getElementById("fillEnabled").checked;
+            document.getElementById("fill-options").className = isEnabled ? "mt-4 grid gap-3 p-3 bg-zinc-50/50 rounded-xl border border-zinc-200" : "hidden";
+        }
+
+        function toggleFillSelected() {
+            const source = document.getElementById("fillSource").value;
+            document.getElementById("fillSelected").className = source === "selected" ? "w-full rounded-xl border border-zinc-300 bg-white/80 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none" : "hidden";
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+            document.getElementById('pdfFrame').src = '';
+        }
+
+        function render() {
+            const container = document.getElementById("items-container");
+            const totalQty = items.reduce((sum, item) => sum + Number(item.qty), 0);
+            const selectedCount = items.filter(i => i.selected).length;
+            
+            document.getElementById("summary-text").innerHTML = `${items.length} Images &bull; ${totalQty} Qty`;
+            document.getElementById("total-stickers-footer").innerText = `${totalQty} Stickers`;
+            document.getElementById("generateBtn").disabled = items.length === 0;
+            document.getElementById("previewBtn").disabled = items.length === 0;
+
+            const batchToolbar = document.getElementById("batch-toolbar");
+            if (selectedCount > 0) {
+                batchToolbar.classList.remove("hidden");
+                document.getElementById("batch-count-badge").innerText = selectedCount;
+                if(document.getElementById("batchPreset").options.length === 0) updateBatchPresetDropdown();
+            } else {
+                batchToolbar.classList.add("hidden");
+            }
+
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (items.length > 0) selectAllCheckbox.checked = selectedCount === items.length;
+
+            const fillSelect = document.getElementById("fillSelected");
+            fillSelect.innerHTML = '<option value="">Select filler...</option>' + items.map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+
+            // Added glassmorphism styling to image cards (bg-white/90 backdrop-blur-md)
+            container.innerHTML = items.map((it, idx) => `
+                <div class="relative flex flex-col rounded-2xl border-2 ${it.selected ? 'border-orange-500 bg-orange-50/70 shadow-xl' : 'border-white/20 bg-white/90 backdrop-blur-md hover:border-orange-300'} p-3 transition-all cursor-pointer group shadow-lg" onclick="toggleItemSelection(${idx})">
+                    <div class="absolute top-3 left-3 z-10 rounded bg-white/90 backdrop-blur-sm shadow-sm border border-zinc-200">
+                        <input type="checkbox" class="h-5 w-5 rounded border-zinc-300 text-orange-600 pointer-events-none" ${it.selected ? 'checked' : ''}>
+                    </div>
+                    <button onclick="event.stopPropagation(); removeItem(${idx})" class="absolute top-3 right-3 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-lg border border-zinc-200 text-zinc-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+
+                    <div class="h-40 w-full bg-zinc-50/50 rounded-xl p-2 mb-3 border border-zinc-100 flex items-center justify-center relative overflow-hidden">
+                        <img src="${it.url}" class="max-h-full max-w-full object-contain drop-shadow-md z-10" />
+                    </div>
+                    <div class="text-sm font-black text-zinc-800 truncate px-1 drop-shadow-sm" title="${it.name}">${it.name}</div>
+                    
+                    <div class="mt-3 grid grid-cols-2 gap-2" onclick="event.stopPropagation()">
+                        <select onchange="updateItem(${idx}, 'shape', this.value)" class="rounded-xl border border-zinc-300 bg-white/80 px-2 py-1.5 text-sm font-medium focus:outline-none focus:border-orange-500">
+                            <option value="circle" ${it.shape === 'circle' ? 'selected' : ''}>Circle</option>
+                            <option value="rectangle" ${it.shape === 'rectangle' ? 'selected' : ''}>Rectangle</option>
+                        </select>
+                        <div class="flex items-center gap-2 border border-zinc-300 rounded-xl px-2 py-1.5 bg-white/80 focus-within:border-orange-500">
+                            <span class="text-xs font-bold text-zinc-400 uppercase">Qty</span>
+                            <input type="number" min="1" value="${it.qty}" onchange="updateItem(${idx}, 'qty', this.value)" class="w-full bg-transparent text-sm font-bold text-zinc-800 outline-none" />
+                        </div>
+                    </div>
+
+                    <div onclick="event.stopPropagation()" class="mt-2 flex-grow">
+                    ${it.shape === 'circle' ? `
+                        <select onchange="updateItem(${idx}, 'circlePreset', this.value)" class="w-full rounded-xl border border-zinc-300 bg-white/80 px-2 py-1.5 text-sm font-medium focus:outline-none focus:border-orange-500">
+                            ${CIRCLE_PRESETS.map(p => `<option value="${p.value}" ${it.circlePreset === p.value ? 'selected' : ''}>${p.label} ${p.value !== 'custom' ? '('+p.diameterCm+'cm)' : ''}</option>`).join('')}
+                        </select>
+                        ${it.circlePreset === 'custom' ? `
+                            <div class="mt-2 bg-orange-50/50 border border-orange-200 rounded-xl p-2">
+                                <label class="text-[10px] font-black text-orange-600 uppercase tracking-wider block mb-1">Diameter (cm)</label>
+                                <input type="number" step="0.1" value="${it.diameterCm}" onchange="updateItem(${idx}, 'diameterCm', this.value)" class="w-full rounded-lg border border-orange-300 bg-white/80 px-2 py-1.5 text-sm font-bold focus:outline-none focus:border-orange-500"/>
+                            </div>
+                        ` : ''}
+                    ` : `
+                        <select onchange="updateItem(${idx}, 'rectPreset', this.value)" class="w-full rounded-xl border border-zinc-300 bg-white/80 px-2 py-1.5 text-sm font-medium focus:outline-none focus:border-orange-500">
+                            ${RECT_PRESETS.map(p => `<option value="${p.value}" ${it.rectPreset === p.value ? 'selected' : ''}>${p.label} ${p.value !== 'custom' ? '('+p.widthCm+'x'+p.heightCm+')' : ''}</option>`).join('')}
+                        </select>
+                        ${it.rectPreset === 'custom' ? `
+                            <div class="mt-2 grid grid-cols-2 gap-2 bg-orange-50/50 border border-orange-200 rounded-xl p-2">
+                                <div>
+                                    <label class="text-[10px] font-black text-orange-600 uppercase tracking-wider block mb-1">Width (cm)</label>
+                                    <input type="number" step="0.1" value="${it.widthCm}" onchange="updateItem(${idx}, 'widthCm', this.value)" class="w-full rounded-lg border border-orange-300 bg-white/80 px-2 py-1 text-sm font-bold focus:outline-none focus:border-orange-500" />
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-orange-600 uppercase tracking-wider block mb-1">Height (cm)</label>
+                                    <input type="number" step="0.1" value="${it.heightCm}" onchange="updateItem(${idx}, 'heightCm', this.value)" class="w-full rounded-lg border border-orange-300 bg-white/80 px-2 py-1 text-sm font-bold focus:outline-none focus:border-orange-500" />
+                                </div>
+                            </div>
+                        ` : ''}
+                    `}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function generatePDF(isPreview = false) {
+            const btn = document.getElementById(isPreview ? "previewBtn" : "generateBtn");
+            const errDiv = document.getElementById("error-message");
+            const errText = document.getElementById("error-text");
+            errDiv.classList.add("hidden");
+            
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 ${isPreview ? 'text-orange-600' : 'text-white'} inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> LOADING...`;
+            document.getElementById("generateBtn").disabled = true;
+            document.getElementById("previewBtn").disabled = true;
+
+            try {
+                const fd = new FormData();
+                const settings = {};
+
+                items.forEach(i => {
+                    fd.append("images", i.file);
+                    settings[i.name] = {
+                        shape: i.shape,
+                        qty: Number(i.qty),
+                        diameterCm: Number(i.diameterCm),
+                        rectPreset: i.rectPreset,
+                        widthCm: Number(i.widthCm),
+                        heightCm: Number(i.heightCm)
+                    };
+                });
+
+                fd.append("settings", JSON.stringify(settings));
+                fd.append("paper", document.getElementById("paper").value);
+                fd.append("registration_marks", document.getElementById("regMarks").checked);
+                fd.append("fill_enabled", document.getElementById("fillEnabled").checked);
+                fd.append("fill_source", document.getElementById("fillSource").value);
+                fd.append("fill_selected_name", document.getElementById("fillSelected").value);
+                fd.append("custom_w_cm", document.getElementById("customW").value);
+                fd.append("custom_h_cm", document.getElementById("customH").value);
+
+                const res = await fetch("/generate", { method: "POST", body: fd });
+                
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || "Failed to generate PDF");
+                }
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                
+                if (isPreview) {
+                    document.getElementById('pdfFrame').src = url + '#toolbar=0';
+                    document.getElementById('previewModal').classList.remove('hidden');
+                } else {
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "memento_world_sticker.pdf";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            } catch (e) {
+                errText.innerText = e.message;
+                errDiv.classList.remove("hidden");
+                window.scrollTo(0, 0);
+            } finally {
+                btn.innerHTML = originalText;
+                document.getElementById("generateBtn").disabled = false;
+                document.getElementById("previewBtn").disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
